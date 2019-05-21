@@ -1,3 +1,20 @@
+terraform {
+  required_version = ">= 0.12.0"
+  backend "azurerm" {}
+}
+
+
+#
+# Resource group
+#
+
+resource "azurerm_resource_group" "gw" {
+  name     = var.resource_group_name
+  location = var.location
+
+  tags = var.tags
+}
+
 #
 # Gateway
 #
@@ -10,16 +27,15 @@ module "vpn_key" {
 }
 
 resource "azurerm_public_ip" "gw" {
-  count               = "${var.create_gateway}"
-  name                = "${var.hub_prefix}-gw-pip"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+  name                = "${var.name}-gw-pip"
+  location            = azurerm_resource_group.gw.location
+  resource_group_name = azurerm_resource_group.gw.name
 
   allocation_method = "Static"
-  domain_name_label = "${var.hub_prefix}-gw"
+  domain_name_label = "${var.name}-gw"
   sku               = "Standard"
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
 resource "azurerm_monitor_diagnostic_setting" "gw_pip" {

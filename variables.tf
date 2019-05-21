@@ -1,5 +1,5 @@
 variable "name" {
-  description = "Name of hub network."
+  description = "Name of virtual gateway."
 }
 
 variable "resource_group_name" {
