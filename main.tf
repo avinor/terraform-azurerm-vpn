@@ -7,26 +7,8 @@ terraform {
 }
 
 #
-# Resource group
-#
-
-resource "azurerm_resource_group" "gw" {
-  name     = var.resource_group_name
-  location = var.location
-
-  tags = var.tags
-}
-
-#
 # Gateway
 #
-
-# module "vpn_key" {
-#   source     = "../../secrets/cert"
-#   name       = "vpn"
-#   vault_name = "${data.terraform_remote_state.setup.vault_name}"
-#   vault_id   = "${data.terraform_remote_state.setup.vault_id}"
-# }
 
 resource "random_string" "dns" {
   length  = 6
@@ -36,8 +18,8 @@ resource "random_string" "dns" {
 
 resource "azurerm_public_ip" "gw" {
   name                = "${var.name}-gw-pip"
-  location            = azurerm_resource_group.gw.location
-  resource_group_name = azurerm_resource_group.gw.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   allocation_method = "Static"
   domain_name_label = format("%sgw%s", lower(replace(var.name, "/[[:^alnum:]]/", "")), random_string.dns.result)
@@ -49,8 +31,8 @@ resource "azurerm_public_ip" "gw" {
 resource "azurerm_public_ip" "gw_aa" {
   count               = var.active_active ? 1 : 0
   name                = "${var.name}-gw-aa-pip"
-  location            = azurerm_resource_group.gw.location
-  resource_group_name = azurerm_resource_group.gw.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   allocation_method = "Static"
   domain_name_label = format("%sgwaa%s", lower(replace(var.name, "/[[:^alnum:]]/", "")), random_string.dns.result)
@@ -100,8 +82,8 @@ resource "azurerm_monitor_diagnostic_setting" "gw_pip" {
 
 resource "azurerm_virtual_network_gateway" "gw" {
   name                = "${var.name}-gw"
-  location            = azurerm_resource_group.gw.location
-  resource_group_name = azurerm_resource_group.gw.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   type     = "Vpn"
   vpn_type = "RouteBased"
@@ -210,8 +192,8 @@ resource "azurerm_monitor_diagnostic_setting" "gw" {
 resource "azurerm_local_network_gateway" "local" {
   count               = length(var.local_networks)
   name                = "${var.local_networks[count.index].name}-lng"
-  resource_group_name = azurerm_resource_group.gw.name
-  location            = azurerm_resource_group.gw.location
+  resource_group_name = var.resource_group_name
+  location            = var.location
   gateway_address     = var.local_networks[count.index].gateway_address
   address_space       = var.local_networks[count.index].address_space
 
@@ -221,8 +203,8 @@ resource "azurerm_local_network_gateway" "local" {
 resource "azurerm_virtual_network_gateway_connection" "local" {
   count               = length(var.local_networks)
   name                = "${var.local_networks[count.index].name}-lngc"
-  location            = azurerm_resource_group.gw.location
-  resource_group_name = azurerm_resource_group.gw.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   type                       = var.local_networks[count.index].type
   virtual_network_gateway_id = azurerm_virtual_network_gateway.gw.id
