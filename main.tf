@@ -47,7 +47,7 @@ resource "azurerm_public_ip" "gw" {
 }
 
 resource "azurerm_public_ip" "gw_aa" {
-  count = var.active_active ? 1 : 0
+  count               = var.active_active ? 1 : 0
   name                = "${var.name}-gw-aa-pip"
   location            = azurerm_resource_group.gw.location
   resource_group_name = azurerm_resource_group.gw.name
@@ -208,7 +208,7 @@ resource "azurerm_monitor_diagnostic_setting" "gw" {
 }
 
 resource "azurerm_local_network_gateway" "local" {
-  count = length(var.local_networks)
+  count               = length(var.local_networks)
   name                = "${var.local_networks[count.index].name}-lng"
   resource_group_name = azurerm_resource_group.gw.name
   location            = azurerm_resource_group.gw.location
@@ -219,7 +219,7 @@ resource "azurerm_local_network_gateway" "local" {
 }
 
 resource "azurerm_virtual_network_gateway_connection" "local" {
-  count = length(var.local_networks)
+  count               = length(var.local_networks)
   name                = "${var.local_networks[count.index].name}-lngc"
   location            = azurerm_resource_group.gw.location
   resource_group_name = azurerm_resource_group.gw.name
