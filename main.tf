@@ -28,6 +28,45 @@ resource "azurerm_public_ip" "gw" {
   tags = var.tags
 }
 
+resource "azurerm_monitor_diagnostic_setting" "gw_pip" {
+  count                      = var.log_analytics_workspace_id != null ? 1 : 0
+  name                       = "gw-pip-log-analytics"
+  target_resource_id         = azurerm_public_ip.gw.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+
+  log {
+    category = "DDoSProtectionNotifications"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+
+  log {
+    category = "DDoSMitigationFlowLogs"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+
+  log {
+    category = "DDoSMitigationReports"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+
+  metric {
+    category = "AllMetrics"
+
+    retention_policy {
+      enabled = false
+    }
+  }
+}
+
 resource "azurerm_public_ip" "gw_aa" {
   count               = var.active_active ? 1 : 0
   name                = "${var.name}-gw-aa-pip"
@@ -41,10 +80,10 @@ resource "azurerm_public_ip" "gw_aa" {
   tags = var.tags
 }
 
-resource "azurerm_monitor_diagnostic_setting" "gw_pip" {
-  count                      = var.log_analytics_workspace_id != null ? 1 : 0
-  name                       = "gw-pip-log-analytics"
-  target_resource_id         = azurerm_public_ip.gw.id
+resource "azurerm_monitor_diagnostic_setting" "gw_aa_pip" {
+  count                      = var.log_analytics_workspace_id != null && var.active_active ? 1 : 0
+  name                       = "gw-aa-pip-log-analytics"
+  target_resource_id         = azurerm_public_ip.gw_aa[0].id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
   log {
@@ -104,7 +143,7 @@ resource "azurerm_virtual_network_gateway" "gw" {
     iterator = ic
     content {
       name                          = "${var.name}-gw-aa-config"
-      public_ip_address_id          = azurerm_public_ip.gw_aa.id
+      public_ip_address_id          = azurerm_public_ip.gw_aa[0].id
       private_ip_address_allocation = "Dynamic"
       subnet_id                     = var.subnet_id
     }
