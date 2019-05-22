@@ -1,8 +1,10 @@
 terraform {
-  required_version = ">= 0.12.0"
   backend "azurerm" {}
+  required_version = ">= 0.12.0"
+  required_providers {
+    azurerm = ">= 1.28.0"
+  }
 }
-
 
 #
 # Resource group
@@ -19,11 +21,17 @@ resource "azurerm_resource_group" "gw" {
 # Gateway
 #
 
-module "vpn_key" {
-  source     = "../../secrets/cert"
-  name       = "vpn"
-  vault_name = "${data.terraform_remote_state.setup.vault_name}"
-  vault_id   = "${data.terraform_remote_state.setup.vault_id}"
+# module "vpn_key" {
+#   source     = "../../secrets/cert"
+#   name       = "vpn"
+#   vault_name = "${data.terraform_remote_state.setup.vault_name}"
+#   vault_id   = "${data.terraform_remote_state.setup.vault_id}"
+# }
+
+resource "random_string" "dns" {
+  length  = 6
+  special = false
+  upper   = false
 }
 
 resource "azurerm_public_ip" "gw" {
@@ -32,17 +40,30 @@ resource "azurerm_public_ip" "gw" {
   resource_group_name = azurerm_resource_group.gw.name
 
   allocation_method = "Static"
-  domain_name_label = "${var.name}-gw"
+  domain_name_label = format("%sgw%s", lower(replace(var.name, "/[[:^alnum:]]/", "")), random_string.dns.result)
+  sku               = "Standard"
+
+  tags = var.tags
+}
+
+resource "azurerm_public_ip" "gw_aa" {
+  count = var.active_active ? 1 : 0
+  name                = "${var.name}-gw-aa-pip"
+  location            = azurerm_resource_group.gw.location
+  resource_group_name = azurerm_resource_group.gw.name
+
+  allocation_method = "Static"
+  domain_name_label = format("%sgwaa%s", lower(replace(var.name, "/[[:^alnum:]]/", "")), random_string.dns.result)
   sku               = "Standard"
 
   tags = var.tags
 }
 
 resource "azurerm_monitor_diagnostic_setting" "gw_pip" {
-  count                      = "${var.create_gateway}"
+  count                      = var.log_analytics_workspace_id != null ? 1 : 0
   name                       = "gw-pip-log-analytics"
-  target_resource_id         = "${azurerm_public_ip.gw.id}"
-  log_analytics_workspace_id = "${data.terraform_remote_state.setup.log_resource_id}"
+  target_resource_id         = azurerm_public_ip.gw.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
 
   log {
     category = "DDoSProtectionNotifications"
@@ -78,53 +99,64 @@ resource "azurerm_monitor_diagnostic_setting" "gw_pip" {
 }
 
 resource "azurerm_virtual_network_gateway" "gw" {
-  count               = "${var.create_gateway}"
-  name                = "${var.hub_prefix}-gw"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+  name                = "${var.name}-gw"
+  location            = azurerm_resource_group.gw.location
+  resource_group_name = azurerm_resource_group.gw.name
 
   type     = "Vpn"
   vpn_type = "RouteBased"
 
-  active_active = false
-  enable_bgp    = false
-  sku           = "VpnGw1"
+  active_active = var.active_active
+  enable_bgp    = var.enable_bgp
+  sku           = var.sku
 
   ip_configuration {
-    name                          = "${var.hub_prefix}-gw-config"
-    public_ip_address_id          = "${azurerm_public_ip.gw.id}"
+    name                          = "${var.name}-gw-config"
+    public_ip_address_id          = azurerm_public_ip.gw.id
     private_ip_address_allocation = "Dynamic"
-    subnet_id                     = "${azurerm_subnet.gateway.id}"
+    subnet_id                     = var.subnet_id
   }
 
-  vpn_client_configuration {
-    address_space = ["${var.client_address_space}"]
-
-    root_certificate {
-      name = "Avinor-VPN-Certificate"
-
-      public_cert_data = "${module.vpn_key.ca_cert_base64_value}"
+  dynamic "ip_configuration" {
+    for_each = var.active_active ? [true] : []
+    iterator = ic
+    content {
+      name                          = "${var.name}-gw-aa-config"
+      public_ip_address_id          = azurerm_public_ip.gw_aa.id
+      private_ip_address_allocation = "Dynamic"
+      subnet_id                     = var.subnet_id
     }
+  }
 
-    vpn_client_protocols = [
-      "SSTP",
-      "IkeV2",
-    ]
+  dynamic "vpn_client_configuration" {
+    for_each = var.client_configuration != null ? [var.client_configuration] : []
+    iterator = vpn
+    content {
+      address_space = [vpn.address_space]
+
+      root_certificate {
+        name = "VPN-Certificate"
+
+        public_cert_data = "TODO"
+      }
+
+      vpn_client_protocols = vpn.protocols
+    }
   }
 
   # TODO Buggy... keep want to change this attribute
   lifecycle {
-    ignore_changes = ["vpn_client_configuration.0.root_certificate"]
+    ignore_changes = ["vpn_client_configuration[0].root_certificate"]
   }
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
 resource "azurerm_monitor_diagnostic_setting" "gw" {
-  count                      = "${var.create_gateway}"
+  count                      = var.log_analytics_workspace_id != null ? 1 : 0
   name                       = "gw-analytics"
-  target_resource_id         = "${azurerm_virtual_network_gateway.gw.id}"
-  log_analytics_workspace_id = "${data.terraform_remote_state.setup.log_resource_id}"
+  target_resource_id         = azurerm_virtual_network_gateway.gw.id
+  log_analytics_workspace_id = var.log_analytics_workspace_id
 
   log {
     category = "GatewayDiagnosticLog"
@@ -175,33 +207,28 @@ resource "azurerm_monitor_diagnostic_setting" "gw" {
   }
 }
 
-resource "azurerm_local_network_gateway" "onpremise" {
-  name                = "${var.hub_prefix}-onpremise"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
-  location            = "${azurerm_resource_group.vnet.location}"
-  gateway_address     = ""
-  address_space       = [
-  ]
+resource "azurerm_local_network_gateway" "local" {
+  count = length(var.local_networks)
+  name                = "${var.local_networks[count.index].name}-lng"
+  resource_group_name = azurerm_resource_group.gw.name
+  location            = azurerm_resource_group.gw.location
+  gateway_address     = var.local_networks[count.index].gateway_address
+  address_space       = var.local_networks[count.index].address_space
 
-  tags = "${var.tags}"
+  tags = var.tags
 }
 
-resource "random_string" "shared_key" {
-  length = 32
-  special = true
-  override_special = "_-"
-}
+resource "azurerm_virtual_network_gateway_connection" "local" {
+  count = length(var.local_networks)
+  name                = "${var.local_networks[count.index].name}-lngc"
+  location            = azurerm_resource_group.gw.location
+  resource_group_name = azurerm_resource_group.gw.name
 
-resource "azurerm_virtual_network_gateway_connection" "onpremise" {
-  name                = "${var.hub_prefix}-onpremise"
-  location            = "${azurerm_resource_group.vnet.location}"
-  resource_group_name = "${azurerm_resource_group.vnet.name}"
+  type                       = var.local_networks[count.index].type
+  virtual_network_gateway_id = azurerm_virtual_network_gateway.gw.id
+  local_network_gateway_id   = azurerm_local_network_gateway.local[count.index].id
 
-  type                       = "IPsec"
-  virtual_network_gateway_id = "${azurerm_virtual_network_gateway.gw.id}"
-  local_network_gateway_id   = "${azurerm_local_network_gateway.onpremise.id}"
+  shared_key = var.local_networks[count.index].shared_key
 
-  shared_key = "${random_string.shared_key.result}"
-
-  tags = "${var.tags}"
+  tags = var.tags
 }
