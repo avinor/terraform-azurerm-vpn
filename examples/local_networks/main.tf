@@ -11,7 +11,6 @@ module "simple" {
         {
             name = "onpremise"
             gateway_address = "8.8.8.8"
-            type = "IPsec"
             address_space = [
                 "10.0.0.0/8"
             ]

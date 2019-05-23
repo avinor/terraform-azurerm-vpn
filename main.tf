@@ -244,7 +244,7 @@ resource "azurerm_virtual_network_gateway_connection" "local" {
   location            = var.location
   resource_group_name = var.resource_group_name
 
-  type                       = var.local_networks[count.index].type
+  type                       = "IPSec"
   virtual_network_gateway_id = azurerm_virtual_network_gateway.gw.id
   local_network_gateway_id   = azurerm_local_network_gateway.local[count.index].id
 
