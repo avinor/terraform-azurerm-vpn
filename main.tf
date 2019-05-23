@@ -140,7 +140,6 @@ resource "azurerm_virtual_network_gateway" "gw" {
 
   dynamic "ip_configuration" {
     for_each = var.active_active ? [true] : []
-    iterator = ic
     content {
       name                          = "${var.name}-gw-aa-config"
       public_ip_address_id          = azurerm_public_ip.gw_aa[0].id
@@ -153,15 +152,15 @@ resource "azurerm_virtual_network_gateway" "gw" {
     for_each = var.client_configuration != null ? [var.client_configuration] : []
     iterator = vpn
     content {
-      address_space = [vpn.address_space]
+      address_space = [vpn.value.address_space]
 
       root_certificate {
         name = "VPN-Certificate"
 
-        public_cert_data = "TODO"
+        public_cert_data = var.value.certificate
       }
 
-      vpn_client_protocols = vpn.protocols
+      vpn_client_protocols = vpn.value.protocols
     }
   }
 

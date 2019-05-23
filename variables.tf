@@ -32,7 +32,7 @@ variable "sku" {
 
 variable "client_configuration" {
   description = "If set it will activate point-to-site configuration."
-  type        = object({ address_space = string, protocols = list(string) })
+  type        = object({ address_space = string, protocols = list(string), certificate = string })
   default     = null
 }
 
