@@ -5,10 +5,6 @@ terraform {
   }
 }
 
-locals {
-  ipsec_policies = { for net in var.local_networks : net.name => net }
-}
-
 #
 # Gateway
 #
