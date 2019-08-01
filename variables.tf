@@ -38,7 +38,7 @@ variable "client_configuration" {
 
 variable "local_networks" {
   description = "List of local virtual network connections to connect to gateway."
-  type        = list(object({ name = string, gateway_address = string, address_space = list(string), shared_key = string }))
+  type        = list(object({ name = string, gateway_address = string, address_space = list(string), shared_key = string, ipsec_policy = any }))
   default     = []
 }
 
