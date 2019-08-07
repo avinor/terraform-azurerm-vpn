@@ -156,7 +156,7 @@ resource "azurerm_virtual_network_gateway" "gw" {
       root_certificate {
         name = "VPN-Certificate"
 
-        public_cert_data = var.value.certificate
+        public_cert_data = vpn.value.certificate
       }
 
       vpn_client_protocols = vpn.value.protocols
