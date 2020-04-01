@@ -1,7 +1,7 @@
 terraform {
   required_version = ">= 0.12.0"
   required_providers {
-    azurerm = ">= 1.29.0"
+    azurerm = "~> 1.44.0"
   }
 }
 
@@ -165,7 +165,7 @@ resource "azurerm_virtual_network_gateway" "gw" {
 
   # TODO Buggy... keep want to change this attribute
   lifecycle {
-    ignore_changes = ["vpn_client_configuration[0].root_certificate"]
+    ignore_changes = [vpn_client_configuration[0].root_certificate]
   }
 
   tags = var.tags
