@@ -1,16 +1,16 @@
 module "simple" {
-    source = "../../"
+  source = "../../"
 
-    name = "vpn"
-    resource_group_name = "simple-vpn-rg"
-    location = "westeurope"
-    subnet_id = "/subscriptions/00000"
-    sku = "VpnGw1"
+  name                = "vpn"
+  resource_group_name = "simple-vpn-rg"
+  location            = "westeurope"
+  subnet_id           = "/subscriptions/00000"
+  sku                 = "VpnGw1"
 
-    client_configuration = {
-        address_space = "172.16.0.0/24"
-        protocols = ["SSTP","IkeV2"]
-        certificate = <<EOF
+  client_configuration = {
+    address_space = "172.16.0.0/24"
+    protocols     = ["SSTP", "IkeV2"]
+    certificate   = <<EOF
 MIIDuzCCAqOgAwIBAgIQCHTZWCM+IlfFIRXIvyKSrjANBgkqhkiG9w0BAQsFADBn
 MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
 d3cuZGlnaWNlcnQuY29tMSYwJAYDVQQDEx1EaWdpQ2VydCBGZWRlcmF0ZWQgSUQg
@@ -32,5 +32,5 @@ uGLOhRJOFprPdoDIUBB+tmCl3oDcBy3vnUeOEioz8zAkprcb3GHwHAK+vHmmfgcn
 WsfMLH4JCLa/tRYL+Rw/N3ybCkDp00s0WUZ+AoDywSl0Q/ZEnNY0MsFiw6LyIdbq
 M/s/1JRtO3bDSzD9TazRVzn2oBqzSa8VgIo5C1nOnoAKJTlsClJKvIhnRlaLQqk=
 EOF
-    }
+  }
 }

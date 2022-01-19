@@ -11,7 +11,7 @@ variable "location" {
 }
 
 variable "subnet_id" {
-  description = "Id of subnet where gateway should be deployed, have to be names GatewaySubnet."
+  description = "Id of subnet where gateway should be deployed, have to be named GatewaySubnet."
 }
 
 variable "enable_bgp" {
@@ -32,14 +32,26 @@ variable "sku" {
 
 variable "client_configuration" {
   description = "If set it will activate point-to-site configuration."
-  type        = object({ address_space = string, protocols = list(string), certificate = string })
-  default     = null
+  type = object({
+    address_space = string
+    protocols     = list(string)
+    certificate   = string
+  })
+  default = null
 }
 
 variable "local_networks" {
   description = "List of local virtual network connections to connect to gateway."
-  type        = list(object({ name = string, gateway_address = string, address_space = list(string), shared_key = string, ipsec_policy = any }))
-  default     = []
+  type = list(
+    object({
+      name            = string
+      gateway_address = string
+      address_space   = list(string)
+      shared_key      = string
+      ipsec_policy    = any
+    })
+  )
+  default = []
 }
 
 variable "log_analytics_workspace_id" {
